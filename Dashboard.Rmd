@@ -1,0 +1,147 @@
+---
+title: "nCov 19 - As on 27/3/2020"
+output: 
+  flexdashboard::flex_dashboard:
+    orientation: rows
+    vertical_layout: fill
+    social: [ "linkedin", "facebook", "menu"]
+    source_code: embed
+---
+
+```{r setup, include=FALSE}
+library(flexdashboard)
+library(tidyverse)
+library(knitr)
+library(DT)
+library(rpivotTable)
+library(ggplot2)
+library(plotly)
+library(dplyr)
+library(openintro)
+library(highcharter)
+library(coronavirus)
+library(lubridate)
+library(janitor)
+```
+
+
+```{r}
+data <-read_csv("covid_19_data.csv") %>% 
+  filter(ObservationDate=="03/27/2020") %>% 
+  clean_names()
+
+data_raw<-read_csv("covid_19_data.csv") %>% 
+  clean_names()
+```
+
+Summary
+===========================================
+
+Row
+------------------------------------------
+
+
+### Alert Level
+
+```{r}
+valueBox(paste("4"),
+         color = "red",
+         icon = "fa-calendar")
+```
+
+### Total Cases
+
+```{r}
+valueBox(sum(data$confirmed),
+         icon="fa-user")
+
+```
+
+### Total Deaths
+```{r}
+
+gauge((sum(data$deaths)),
+            min = 0,
+            max = 100000,
+            gaugeSectors(success = c(0, 25000),
+                         warning = c(25001, 50000),
+                         danger = c(50001, 100000),
+                         colors = c("yellow", "orange", "red")))
+
+
+```
+
+### Total Cases in NZ
+```{r}
+valueBox(data %>%
+           filter(country_region=="New Zealand") %>% 
+           select(confirmed) %>% 
+           colSums(),
+         icon="fa-user")
+
+```
+
+Row
+------------------------------------
+
+```{r}
+data(worldgeojson, package = "highcharter")
+
+data<-data %>% 
+  clean_names() %>% 
+  filter(!country_region %in% 'Others') %>% 
+  group_by(country_region) %>% 
+  summarise(total_confirmed = sum(confirmed)) 
+
+
+highchart() %>%
+  hc_add_series_map(worldgeojson, data, value = 'total_confirmed', joinBy = c('name','country_region'))  %>% 
+  #hc_colors(c("darkorange", "darkgray")) %>% 
+  hc_colorAxis(stops = color_stops()) %>% 
+  hc_title(text = "Countries with nCov exposure")
+
+```
+
+Trends
+===============================================
+
+
+Row
+---------------------------
+
+
+```{r}
+p1 <- data_raw %>%
+  mutate(observation_date=as.Date(observation_date, format="%m/%d/%Y")) %>% 
+  group_by(observation_date) %>% 
+  summarise(confirmed =  sum(confirmed) , deaths = sum(deaths), recovered = sum(recovered)) %>% 
+  ggplot(aes(observation_date, (confirmed))) +
+  geom_line() +
+  theme_minimal() +
+  ggtitle("Worldwide Cases")
+
+ggplotly(p1)
+
+```
+
+
+```{r}
+p1 <- data_raw %>%
+  filter(country_region=="New Zealand") %>% 
+  mutate(observation_date=as.Date(observation_date, format="%m/%d/%Y")) %>% 
+  group_by(observation_date) %>% 
+  summarise(confirmed =  sum(confirmed) , deaths = sum(deaths), recovered = sum(recovered)) %>% 
+  ggplot(aes(observation_date, (confirmed))) +
+  geom_line() +
+  theme_minimal() +
+  ggtitle("NZ Cases")
+
+ggplotly(p1)
+```
+
+
+
+
+
+
+
